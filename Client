@@ -2,10 +2,11 @@
 
 --[[
 notes:
-- slope movement is buggy. however this is enough for the purposes of showing luau programmer.
-- collide and slide is buggy. 
+- In Move,slope movement is buggy. however this is enough for the purposes of showing luau programmer.
+- In Move,collide and slide is buggy. 
 	1. no spherecast margins yet, so its inevitably buggy rn, until they release
-	
+
+this is the client framework bootstrapper script in game.ReplicatedFirst. loads all factory fns into tables and calls them (starts them)
 
 'vars'='variables'
 'fns'='functions'
