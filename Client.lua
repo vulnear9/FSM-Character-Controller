@@ -7,6 +7,7 @@ notes:
 	1. no spherecast margins yet, so its inevitably buggy rn, until they release
 
 this is the client framework bootstrapper script in game.ReplicatedFirst. loads all factory fns into tables and calls them (starts them)
+used factory pattern for each module for easier lifecycle management
 
 'vars'='variables'
 'fns'='functions'
