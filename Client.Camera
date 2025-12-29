@@ -1,0 +1,118 @@
+--!native
+--!nocheck
+--!optimize 2
+
+--// faster perf property access from a metatable "bug"
+local RawCall=require(script.Parent.Help.RawCall)
+local SetInstanceNewIndex = RawCall.instance_newindex -- equivalent to script.Name = foo
+local GetCFrameIndex = RawCall.cframe_index
+local GetInstanceIndex = RawCall.instance_index -- equivalent to local foo = script.Name (the dot operator)
+
+local Types=require(script.Parent.Info.Types)
+type loaded=Types.loaded
+type char=Types.char
+
+local UIS = game:GetService("UserInputService")
+local RS = game:GetService('RunService')
+local math_clamp=math.clamp
+local math_rad=math.rad
+local math_cos=math.cos
+local math_sin=math.sin
+local vec_zero=vector.zero
+local vec_create=vector.create
+local cf_new=CFrame.new
+local cf_lookat=CFrame.lookAt
+local plr=game.Players.LocalPlayer
+local cam=workspace.CurrentCamera
+local enum_mouse_move=Enum.UserInputType.MouseMovement
+local enum_mb2=Enum.UserInputType.MouseButton2
+local enum_lock_current_pos=Enum.MouseBehavior.LockCurrentPosition
+local enum_default=Enum.MouseBehavior.Default
+local vec2_zero=Vector2.zero --using vector lib is only faster for vector3s, NOT vec2.
+local math_exp=math.exp
+local math_lerp=math.lerp
+local cf_fromOrient=CFrame.fromOrientation
+
+--// settings
+local mouse_sens=.14
+mouse_sens=math_rad(mouse_sens) --bec calcs are done in rads
+local orbit_radius=7  -- Fixed distance from the head (radius of the orbit)
+local mouse_sens_lerp_factor=mouse_sens*60
+
+cam.CameraType=Enum.CameraType.Scriptable
+
+local rp=RaycastParams.new()
+rp.FilterType=Enum.RaycastFilterType.Exclude
+
+return function(loaded:loaded,char:char)	
+	local focus=char.Root
+	
+	rp.FilterDescendantsInstances={char}
+	UIS.MouseBehavior=Enum.MouseBehavior.LockCenter	
+	
+	--// dynamic
+	local smooth_dx, smooth_dy = 0, 0 -- smoothed angles for camera
+	local raw_dx, raw_dy = 0, 0 -- true accumulated rotation
+	local raw_md_x, raw_md_y = 0, 0
+		
+	RS:BindToRenderStep('UpdateRenderPriorityInputs',Enum.RenderPriority.Input.Value,function()
+		--input changed is worse perf
+		local md=UIS:GetMouseDelta()
+		raw_md_x=md.X
+		raw_md_y=md.Y
+	end)
+
+	@native --bec relatively alot of math
+	local function UpdateCam(dt:number)
+		--[[
+		we need smoothening bec mousedelta is naturally jagged
+		GetMouseDelta isnt continuous
+		]]
+		-- incremental smoothening raw vars
+		local factor=mouse_sens_lerp_factor*dt --cache this
+		raw_dx += raw_md_y * factor
+		raw_dy += raw_md_x * factor
+
+		-- smooth camera variables
+		smooth_dx = math_lerp(smooth_dx, raw_dx, 0.2)
+		smooth_dy = math_lerp(smooth_dy, raw_dy, 0.2)
+
+		-- apply cam cf and check colls		
+		-- full spherical cam rot
+		local focus_pos: vector = GetInstanceIndex(focus, 'Position')
+		local cf_pointed_to_focus=cf_new(focus_pos)*cf_fromOrient(-smooth_dx,-smooth_dy,0)
+
+		local goal_pos:vector=focus_pos+(cf_fromOrient(-smooth_dx, -smooth_dy, 0) * vec_create(0, 0, orbit_radius))
+		local ray=workspace:Raycast(
+			focus_pos,
+			goal_pos-focus_pos,
+			rp
+		)
+		if ray then
+			local coll_dist=math.max(ray.Distance-.1,.5) --ray.Distance-skin,min_dist. skin width to alleviate phasing thru
+			SetInstanceNewIndex(
+				cam,
+				'CFrame',
+				cf_pointed_to_focus*cf_new(0,0,coll_dist)
+			)
+		else
+      --apply normally
+			SetInstanceNewIndex(
+				cam,
+				'CFrame',
+				cf_pointed_to_focus*cf_new(0,0,orbit_radius)
+			)
+		end
+	
+	end
+	RS:BindToRenderStep('UpdateRenderPriorityCamera',Enum.RenderPriority.Camera.Value,UpdateCam)
+	
+	return {
+		Wipe=function()
+			-- reset state
+			RS:UnbindFromRenderStep('UpdateRenderPriorityInputs')
+			RS:UnbindFromRenderStep('UpdateRenderPriorityCamera')
+			UIS.MouseBehavior=enum_default
+		end,
+	}
+end
