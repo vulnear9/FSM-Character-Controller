@@ -80,6 +80,7 @@ return function(loaded:loaded,char:char)
 		-- apply cam cf and check colls		
 		-- full spherical cam rot
 		local focus_pos: vector = GetInstanceIndex(focus, 'Position')
+		--rotate around focus point by (horiz, vertical)
 		local cf_pointed_to_focus=cf_new(focus_pos)*cf_fromOrient(-smooth_dx,-smooth_dy,0)
 
 		local goal_pos:vector=focus_pos+(cf_fromOrient(-smooth_dx, -smooth_dy, 0) * vec_create(0, 0, orbit_radius))
