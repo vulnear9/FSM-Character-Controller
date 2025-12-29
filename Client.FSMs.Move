@@ -1,6 +1,17 @@
 --!optimize 2
 --!nocheck
 
+--[[
+Move finite state machine
+- jump coyote time
+- jump buffering
+- half implemented slope movement
+- half implemented collide and slide
+- smooth velocity
+- scalable with lots of optimisations
+- superstates represented by UpdateGrounded and UpdateAirborne
+]]
+
 local os_clock=os.clock
 local vec_dot=vector.dot
 local key_left_shift=Enum.KeyCode.LeftShift
