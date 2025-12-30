@@ -55,6 +55,9 @@ return function(loaded:loaded,char:char)
 	--// used numerical loops, fastest for this case
 	-- ipairs has fn overhead so i didnt use ip
 	
+	-- further improvement is to do a first pass where u form the size of the arrays, then use table.create for each arr
+	-- but it would be unnecesarily for the app
+	
 	--// doing the batched arrays
 	RS:BindToRenderStep('Physics',Enum.RenderPriority.Camera.Value-1,function(dt:number)
 		--set before camera step so cam sees and uses updated root pos from FSM physics
