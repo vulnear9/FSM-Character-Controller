@@ -2,7 +2,7 @@
 --!nocheck
 
 --[[
-Move finite state machine
+Move finite finite state machine to go along with the omnidirectional camera
 - jump coyote time
 - jump buffering
 - half implemented slope movement
@@ -12,27 +12,14 @@ Move finite state machine
 - superstates represented by UpdateGrounded and UpdateAirborne
 ]]
 
-local os_clock=os.clock
-local vec_dot=vector.dot
 local key_left_shift=Enum.KeyCode.LeftShift
 local key_space=Enum.KeyCode.Space
 local worksp=workspace
 local W,A,S,D=Enum.KeyCode.W,Enum.KeyCode.A,Enum.KeyCode.S,Enum.KeyCode.D
-local vec_zero=vector.zero
-local math_max=math.max
-local math_exp=math.exp
 local cam=workspace.CurrentCamera
-local vec_create=vector.create
-local vec_norm=vector.normalize
-local vec_mag=vector.magnitude
-local math_lerp=math.lerp
-local math_abs=math.abs
-local math_pow=math.pow
-local CF_new=CFrame.new
-local CF_lookat=CFrame.lookAt
-local math_clamp=math.clamp
-local flat_vec=vec_create(1,0,1)
+local flat_vec=vector.create(1,0,1)
 local up_vec = vector.create(0,1,0)
+local vec_zero=vector.zero
 local RawCall=require(script.Parent.Parent.Help.RawCall)
 local SetInstanceNewIndex =	RawCall.instance_newindex -- equivalent to script.Name = foo
 local GetCFrameIndex = RawCall.cframe_index
@@ -48,10 +35,10 @@ local function IsOnSlope(groundNormal):boolean
 	--dot(up_vec,groundNormal)==1 when flat. so 1-dot(...) is "how flat is it".
 	--0 when "perfectly" flat respective ot epsilon
 	--compared to small eps to account for floating point err
-	return 1-vec_dot(up_vec,groundNormal)>.000001
+	return 1-vector.dot(up_vec,groundNormal)>.000001
 end
 local function GetProjVec(vec, normal): Vector3
-	return vec - (normal * vec_dot(vec,normal))
+	return vec - (normal * vector.dot(vec,normal))
 end
 return function(loaded:loaded,char:char)
 	local root=char.Root
@@ -61,7 +48,7 @@ return function(loaded:loaded,char:char)
 	
 	local skin=.025
 	local radius=root.Size.Y*.5 --assumes root is a sphere shape part
-	local grounded_ray_dir:vector=vec_create(0,-vec_mag(leg_top.WorldPosition-leg_bottom.WorldPosition)-skin,0)
+	local grounded_ray_dir:vector=vector.create(0,-vector.magnitude(leg_top.WorldPosition-leg_bottom.WorldPosition)-skin,0)
 	
 	--// state
 	--INPUT
@@ -77,7 +64,7 @@ return function(loaded:loaded,char:char)
 	local vel=vec_zero
 	local has_wasd=false
 	local has_no_wasd=false
-	local prev_vel_horiz=vec_zero
+	local prev_vel_horiz=vector.zero
 	local prev_ground_intersect_y
 	local MAX_SPEED=10
 	local OMEGA_ACCEL=3 -- response speed, higher = more response
@@ -99,7 +86,8 @@ return function(loaded:loaded,char:char)
 	local jump_grav=-30
 
 	local function SmoothVel(v, target, dt, omega)
-		return v:Lerp(target,1-math_exp(-omega*dt))
+		--lerp to target vel with alpha as exp smoothening frame rate indepdencence
+		return v:Lerp(target,1-math.exp(-omega*dt))
 	end
 	local function UpdateHorizVel(dt)
 		if has_wasd then
@@ -108,7 +96,9 @@ return function(loaded:loaded,char:char)
 			local lv=GetCFrameIndex(cam_CF,'LookVector')
 			local minus_iZ=-iZ --optimisation probably unnecessary,to be safe
 			-- gets noramlised "raw" flat move vector below
-			local dir=vec_norm(vec_create((lv.X*minus_iZ)+(rv.X*iX),0,(lv.Z*minus_iZ)+(rv.Z*iX)))
+			-- scales vector X by whether it's forward or back input (minus iz)
+			-- etc
+			local dir=vector.normalize(vector.create((lv.X*minus_iZ)+(rv.X*iX),0,(lv.Z*minus_iZ)+(rv.Z*iX)))
 			local vel_target=dir*MAX_SPEED
 			--// smoothens prev_vel to target by exp lerp. we store prev_vel_horiz
 			--because the vel in "General" is only the accumulator vel which gets reset end of every frame
@@ -131,12 +121,12 @@ return function(loaded:loaded,char:char)
 		local v_out=vel
 		local c=worksp:Spherecast(pos,radius,vel,rp)
 		if c then
-			v_out=vec_norm(vel)*(c.Distance-skin)
-			local n_flat=vec_norm(c.Normal*flat_vec)	
+			v_out=vector.normalize(vel)*(c.Distance-skin)
+			local n_flat=vector.normalize(c.Normal*flat_vec)	
 			local v_proj=GetProjVec(vel-v_out,n_flat)
 			local c2=worksp:Spherecast(pos,radius,v_proj,rp)
 			if c2 then
-				v_out=vec_norm(vel)*(c2.Distance-skin)
+				v_out=vector.normalize(vel)*(c2.Distance-skin)
 			else
 				v_out=v_proj
 			end
@@ -158,9 +148,9 @@ return function(loaded:loaded,char:char)
 				local rv=GetCFrameIndex(cam_CF,'RightVector')
 				local lv=GetCFrameIndex(cam_CF,'LookVector')
 				local minus_iZ=-iZ
-				local unnormalized_dir=vec_create((lv.X*minus_iZ)+(rv.X*iX),0,(lv.Z*minus_iZ)+(rv.Z*iX))
+				local unnormalized_dir=vector.create((lv.X*minus_iZ)+(rv.X*iX),0,(lv.Z*minus_iZ)+(rv.Z*iX))
 				local unnormalized_proj_dir=GetProjVec(unnormalized_dir,ray.Normal)::vector
-				local slope_vel_dir=vec_norm(unnormalized_proj_dir)
+				local slope_vel_dir=vector.normalize(unnormalized_proj_dir)
 				local slope_vel_mag=5*dt
 				local slope_vel=(slope_vel_dir*slope_vel_mag)
 				
@@ -193,7 +183,7 @@ return function(loaded:loaded,char:char)
 				-- only if diff 0 then can step up
 				-- and ignore stepup if prev_state==falling, Falling sets the flag
 				if diff>0 then
-					vel+=vec_create(0,diff*(1-math_exp(-5*dt)),0) --smoothly exp smooth it up by alpha
+					vel+=vector.create(0,diff*(1-math.exp(-5*dt)),0) --smoothly exp smooth it up by alpha
 				else
 					prev_ground_intersect_y=new_y
 				end				
@@ -205,7 +195,7 @@ return function(loaded:loaded,char:char)
 		end
 	end
 	local function UpdateAirborne(dt:number)
-		timer_coyote=math_max(0,timer_coyote-dt)
+		timer_coyote=math.max(0,timer_coyote-dt)
 		if space_down and timer_coyote>0 then
 			timer_coyote=0 --consume anyway
 			return 'Jumping'
@@ -233,8 +223,8 @@ return function(loaded:loaded,char:char)
 				
 				-- update vertical velocity
 				fall_y_vel_value=fall_y_vel_value+(fall_grav*dt) --integrating grav (so called Euler Integration)
-				fall_y_vel_value=math_max(fall_y_vel_value,fall_terminal_vel) --clamp to terminal falling vel
-				local y_change_vec=vec_create(0,fall_y_vel_value*dt,0) --make actual fall displacement vec
+				fall_y_vel_value=math.max(fall_y_vel_value,fall_terminal_vel) --clamp to terminal falling vel
+				local y_change_vec=vector.create(0,fall_y_vel_value*dt,0) --make actual fall displacement vec
 
 				-- raycast to check landing, only need to by what htey would have fallen this frame (y_change_vec)
 				local ray = worksp:Raycast(
@@ -245,11 +235,11 @@ return function(loaded:loaded,char:char)
 				if ray then
 					-- snap down exactly to ground
 					-- dist of exact snap is ray.Distance
-					vel+=vec_create(0,-ray.Distance,0)
+					vel+=vector.create(0,-ray.Distance,0)
 					
 					--// checking for coyote jump (given the time diff between leaving a ledge and jumping is below 
 					-- jump buffer allowance)
-					if timestamp_jump_request and os_clock()-timestamp_jump_request<=jump_buffer_allowance then
+					if timestamp_jump_request and os.clock()-timestamp_jump_request<=jump_buffer_allowance then
 						return 'Jumping'
 					else
 						-- switch to walking/idling on landed
@@ -263,7 +253,7 @@ return function(loaded:loaded,char:char)
 					if space_down and not timestamp_jump_request then
 						--// set jump buffer request IF we dont have it already
 						-- if we have it already, ignore, to prevent unintentional space-spam input stuff
-						timestamp_jump_request=os_clock()
+						timestamp_jump_request=os.clock()
 					end
 					
 					-- still falling, apply to vel accumulator
@@ -288,7 +278,7 @@ return function(loaded:loaded,char:char)
 				local y_change:number = jump_dynamic_y_velo * dt
 
 				-- apply vertical movement BEFORE checking for falling
-				vel += vec_create(0, y_change, 0)
+				vel += vector.create(0, y_change, 0)
 
 				-- switch state if reached the descending part of parabolic trajectory
 				if y_change < 0 then
@@ -408,18 +398,18 @@ return function(loaded:loaded,char:char)
 			UpdateFlatCollideSlide()
 			
 			--opt. vec_dot(v,v) is squared mag. squared mag is perf faster than vec_mag(). so used vec_dot
-			if vec_dot(vel,vel)>0 then
+			if vector.dot(vel,vel)>0 then
 				local new_pos=pos+vel
 
 				-- facing_dir must have a flat vel to use cf_lookat on in a predictable way
 				local facing_dir=vel*flat_vec --1,0,1
 				if facing_dir~=vec_zero then --prevents nan. check if nonzero vec without sqrt expensive
-					facing_dir=vec_norm(facing_dir) --renormalise for cf_lookat consistency
+					facing_dir=vector.normalize(facing_dir) --renormalise for cf_lookat consistency
 					
-					char:PivotTo(CF_lookat(new_pos,new_pos+facing_dir))
+					char:PivotTo(CFrame.lookAt(new_pos,new_pos+facing_dir))
 				else
 					-- just pivot to new_pos with respect to existing rotation
-					char:PivotTo(CF_new(new_pos)*GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'Rotation'))
+					char:PivotTo(CFrame.new(new_pos)*GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'Rotation'))
 				end	
 			end
 			--// reset frame accumulators
