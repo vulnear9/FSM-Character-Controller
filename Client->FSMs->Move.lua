@@ -406,7 +406,7 @@ return function(loaded:loaded,char:char)
 					local now_facing_dir=GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'LookVector')
 					local turn_factor=1-math.abs(vector.dot(facing_dir,now_facing_dir))
 					facing_dir=now_facing_dir:Lerp(facing_dir,turn_factor)
-					facing_dir=vector.dot(facing_dir) 
+					facing_dir=vector.normalize(facing_dir) 
 					char:PivotTo(CFrame.lookAt(new_pos,new_pos+facing_dir))
 				end	
 			end
