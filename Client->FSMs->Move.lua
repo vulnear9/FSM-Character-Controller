@@ -404,8 +404,10 @@ return function(loaded:loaded,char:char)
 				-- facing_dir must have a flat vel to use cf_lookat on in a predictable way
 				local facing_dir=vel*flat_vec --1,0,1
 				if facing_dir~=vec_zero then --prevents nan. check if nonzero vec without sqrt expensive
-					facing_dir=vector.normalize(facing_dir) --renormalise for cf_lookat consistency
-					
+					local now_facing_dir=GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'LookVector')
+					local turn_factor=1-math.abs(vec_dot(facing_dir,now_facing_dir))
+					facing_dir=now_facing_dir:Lerp(facing_dir,turn_factor)
+					facing_dir=vec_norm(facing_dir) --RENORM FOR CONSISTENCY AND IT TO BE OK
 					char:PivotTo(CFrame.lookAt(new_pos,new_pos+facing_dir))
 				else
 					-- just pivot to new_pos with respect to existing rotation
