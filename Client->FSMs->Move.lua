@@ -398,20 +398,16 @@ return function(loaded:loaded,char:char)
 			UpdateFlatCollideSlide()
 			
 			--opt. vec_dot(v,v) is squared mag. squared mag is perf faster than vec_mag(). so used vec_dot
-			if vector.dot(vel,vel)>0 then
+			if vector.dot(vel,vel)>1e-7 then --optimisation with a threshold 1e-7 to prevent unnecessary
 				local new_pos=pos+vel
+				local facing_dir=vel*flat_vec
 
-				-- facing_dir must have a flat vel to use cf_lookat on in a predictable way
-				local facing_dir=vel*flat_vec --1,0,1
-				if facing_dir~=vec_zero then --prevents nan. check if nonzero vec without sqrt expensive
+				if vector.dot(facing_dir,facing_dir)>1e-7 then --apply turning new. dot to prevent nan	
 					local now_facing_dir=GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'LookVector')
-					local turn_factor=1-math.abs(vec_dot(facing_dir,now_facing_dir))
+					local turn_factor=1-math.abs(vector.dot(facing_dir,now_facing_dir))
 					facing_dir=now_facing_dir:Lerp(facing_dir,turn_factor)
-					facing_dir=vec_norm(facing_dir) --RENORM FOR CONSISTENCY AND IT TO BE OK
+					facing_dir=vector.dot(facing_dir) 
 					char:PivotTo(CFrame.lookAt(new_pos,new_pos+facing_dir))
-				else
-					-- just pivot to new_pos with respect to existing rotation
-					char:PivotTo(CFrame.new(new_pos)*GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'Rotation'))
 				end	
 			end
 			--// reset frame accumulators
