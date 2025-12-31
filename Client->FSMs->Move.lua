@@ -408,6 +408,9 @@ return function(loaded:loaded,char:char)
 					facing_dir=now_facing_dir:Lerp(facing_dir,turn_factor)
 					facing_dir=vector.normalize(facing_dir) 
 					char:PivotTo(CFrame.lookAt(new_pos,new_pos+facing_dir))
+				else
+					-- apply without needing facing_dir lookat. just use prev frame's cframe rotation.
+					char:PivotTo(CF_new(new_pos)*GetCFrameIndex(GetInstanceIndex(root,'CFrame'),'Rotation'))
 				end	
 			end
 			--// reset frame accumulators
